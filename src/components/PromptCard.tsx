@@ -14,6 +14,7 @@ interface PromptIdea {
   preview: string;
   status: 'Proposed' | 'Approved' | 'Pending';
   parentStructureId?: string;
+  proposedBy?: string;
 }
 
 interface PromptCardProps {

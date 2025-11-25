@@ -11,6 +11,7 @@ export function AddNewIdeaPage({ onBack, onSubmit }: AddNewIdeaPageProps) {
   const [renderer, setRenderer] = useState('');
   const [skeleton, setSkeleton] = useState('');
   const [notes, setNotes] = useState('');
+  const [proposedBy, setProposedBy] = useState('AI System');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -71,6 +72,25 @@ export function AddNewIdeaPage({ onBack, onSubmit }: AddNewIdeaPageProps) {
             <p className="mt-2 text-sm text-gray-500">
               Use [Placeholder] syntax for variables and ::weight for emphasis weights
             </p>
+          </div>
+
+          <div>
+            <label className="block mb-2 text-gray-700">
+              Proposed By <span className="text-red-500">*</span>
+            </label>
+            <select
+              value={proposedBy}
+              onChange={(e) => setProposedBy(e.target.value)}
+              required
+              className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#525866] focus:border-transparent"
+            >
+              <option value="">Select who proposed this idea...</option>
+              <option value="Shawn">Shawn</option>
+              <option value="Design Team">Design Team</option>
+              <option value="AI System">AI System</option>
+              <option value="Marketing Team">Marketing Team</option>
+              <option value="External Partner">External Partner</option>
+            </select>
           </div>
 
           <div>

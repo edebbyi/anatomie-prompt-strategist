@@ -1,0 +1,32 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+.pnp.cjs
+.yarn/install-state.gz
+yarn.lock
+
+# Production builds
+dist
+build
+.vercel
+.output
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+*.log
+
+# Environment
+.env
+.env.*.local
+
+# Editor/OS
+.DS_Store
+.vscode
+.idea
+
+# Testing/coverage
+coverage

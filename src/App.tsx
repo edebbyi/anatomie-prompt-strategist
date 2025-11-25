@@ -20,6 +20,7 @@ interface PromptIdea {
   status: 'Proposed' | 'Approved' | 'Pending';
   parentStructureId?: string;
   date: string;
+  proposedBy?: string;
 }
 
 // Mock ideas for different days
@@ -33,6 +34,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Garment Type] stunning luxury [Category]::5 [Modeled by three stunningly beautiful supermodels]::4.5 [Detail 1]::5 [Detail 2]::5...',
       status: 'Proposed',
       date: '2025-11-24',
+      proposedBy: 'AI System',
     },
     {
       id: '#002',
@@ -42,6 +44,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Designer Brand] [Garment] Collection::5 [Seasonal Theme] [Model Count and Description]::4.5 [Photography Style]...',
       status: 'Approved',
       date: '2025-11-24',
+      proposedBy: 'AI System',
     },
     {
       id: '#003',
@@ -51,6 +54,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Minimalist/Maximalist] [Garment Category] Collection [Season/Year]::5 [Technical Specifications]::4.5 [Artistic Direction]...',
       status: 'Pending',
       date: '2025-11-24',
+      proposedBy: 'AI System',
     },
   ],
   '2025-11-25': [
@@ -62,6 +66,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Urban/Rural] fashion photography [Garment Focus]::5 [Model demographics and pose]::4.5 [Lighting and atmosphere]...',
       status: 'Proposed',
       date: '2025-11-25',
+      proposedBy: 'AI System',
     },
     {
       id: '#005',
@@ -71,6 +76,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Color palette] [Garment] editorial shoot::5 [Fabric details and textures]::5 [Background and setting]::4.5...',
       status: 'Approved',
       date: '2025-11-25',
+      proposedBy: 'AI System',
     },
     {
       id: '#006',
@@ -80,6 +86,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Decade-inspired] [Category] collection::5 [Model styling and makeup]::4.5 [Accessories and props]::4...',
       status: 'Proposed',
       date: '2025-11-25',
+      proposedBy: 'AI System',
     },
   ],
   '2025-11-26': [
@@ -91,6 +98,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Avant-garde] [Material/Fabric] fashion collection::5 [Architectural elements]::4.5 [Artistic vision]::4...',
       status: 'Pending',
       date: '2025-11-26',
+      proposedBy: 'AI System',
     },
     {
       id: '#008',
@@ -100,6 +108,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[High fashion] runway presentation::5 [Model poses and expression]::4.5 [Venue and atmosphere]::4...',
       status: 'Approved',
       date: '2025-11-26',
+      proposedBy: 'AI System',
     },
     {
       id: '#009',
@@ -109,6 +118,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Sustainable fashion] [Eco-friendly materials]::5 [Natural lighting]::4.5 [Outdoor setting]::4.5...',
       status: 'Proposed',
       date: '2025-11-26',
+      proposedBy: 'AI System',
     },
   ],
   '2025-11-27': [
@@ -120,6 +130,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Street style] fashion editorial::5 [Urban backdrop]::4.5 [Candid poses]::4...',
       status: 'Pending',
       date: '2025-11-27',
+      proposedBy: 'AI System',
     },
     {
       id: '#011',
@@ -129,6 +140,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Monochrome] [Textile focus] lookbook::5 [Dramatic lighting]::5 [Minimalist composition]::4.5...',
       status: 'Approved',
       date: '2025-11-27',
+      proposedBy: 'AI System',
     },
     {
       id: '#012',
@@ -138,6 +150,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Vintage] [Era-specific] fashion shoot::5 [Period-accurate styling]::4.5 [Retro atmosphere]::4...',
       status: 'Proposed',
       date: '2025-11-27',
+      proposedBy: 'AI System',
     },
   ],
   '2025-11-28': [
@@ -149,6 +162,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Couture] [Handcrafted details] collection::5 [Luxury fabrics]::5 [Studio lighting]::4.5...',
       status: 'Approved',
       date: '2025-11-28',
+      proposedBy: 'AI System',
     },
     {
       id: '#014',
@@ -158,6 +172,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Athleisure] [Performance wear] campaign::5 [Active poses]::4.5 [Dynamic composition]::4...',
       status: 'Pending',
       date: '2025-11-28',
+      proposedBy: 'AI System',
     },
     {
       id: '#015',
@@ -167,6 +182,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Editorial] [Conceptual fashion] art piece::5 [Surreal elements]::4.5 [Bold styling]::4.5...',
       status: 'Proposed',
       date: '2025-11-28',
+      proposedBy: 'AI System',
     },
   ],
   '2025-11-29': [
@@ -178,6 +194,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Formal wear] [Evening attire] collection::5 [Elegant poses]::4.5 [Sophisticated setting]::4...',
       status: 'Approved',
       date: '2025-11-29',
+      proposedBy: 'AI System',
     },
     {
       id: '#017',
@@ -187,6 +204,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Resort wear] [Vacation styling]::5 [Tropical backdrop]::5 [Natural light]::4.5...',
       status: 'Pending',
       date: '2025-11-29',
+      proposedBy: 'AI System',
     },
     {
       id: '#018',
@@ -196,6 +214,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Accessories focus] [Detail shots] editorial::5 [Close-up composition]::4.5 [Texture emphasis]::4...',
       status: 'Proposed',
       date: '2025-11-29',
+      proposedBy: 'AI System',
     },
   ],
   '2025-11-30': [
@@ -207,6 +226,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Gender-neutral] [Contemporary fashion]::5 [Diverse models]::4.5 [Modern aesthetic]::4.5...',
       status: 'Approved',
       date: '2025-11-30',
+      proposedBy: 'AI System',
     },
     {
       id: '#020',
@@ -216,6 +236,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Knitwear] [Cozy textures] collection::5 [Soft lighting]::4.5 [Intimate setting]::4...',
       status: 'Pending',
       date: '2025-11-30',
+      proposedBy: 'AI System',
     },
     {
       id: '#021',
@@ -225,6 +246,7 @@ const mockIdeasByDay: Record<string, PromptIdea[]> = {
       preview: '[Bold prints] [Pattern mixing] editorial::5 [Vibrant colors]::5 [Creative styling]::4.5...',
       status: 'Proposed',
       date: '2025-11-30',
+      proposedBy: 'AI System',
     },
   ],
 };
@@ -264,6 +286,7 @@ export default function App() {
       preview: skeleton,
       status: 'Proposed',
       date: today,
+      proposedBy: 'AI System',
     };
 
     setIdeasByDay(prev => ({

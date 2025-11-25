@@ -20,6 +20,7 @@ interface PromptIdea {
   status: 'Proposed' | 'Approved' | 'Pending';
   parentStructureId?: string;
   date: string;
+  proposedBy?: string;
 }
 
 export function TodaysIdeasPage({ currentTab, ideasByDay, setIdeasByDay }: TodaysIdeasPageProps) {

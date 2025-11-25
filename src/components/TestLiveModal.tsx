@@ -11,6 +11,7 @@ interface PromptIdea {
   title: string;
   preview: string;
   status: 'Proposed' | 'Approved' | 'Pending';
+  proposedBy?: string;
 }
 
 interface TestLiveModalProps {
@@ -147,6 +148,14 @@ export function TestLiveModal({ idea, onClose, onStatusChange, onApprove }: Test
               <label className="block mb-2 text-gray-700">Renderer</label>
               <div className="text-gray-900">{idea.renderer}</div>
             </div>
+
+            {/* Proposed By */}
+            {idea.proposedBy && (
+              <div className="mb-6">
+                <label className="block mb-2 text-gray-700">Proposed By</label>
+                <div className="text-gray-900">{idea.proposedBy}</div>
+              </div>
+            )}
 
             {/* Seed (only show after generation) */}
             {seed && (
