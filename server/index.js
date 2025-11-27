@@ -143,6 +143,14 @@ const calculateRewardScore = (structure) => {
   );
 };
 
+const resolveIdeasView = (status) => {
+  const s = (status || '').toLowerCase();
+  if (s === 'proposed') return process.env.VITE_VIEW_IDEAS_PROPOSED;
+  if (s === 'pending') return process.env.VITE_VIEW_IDEAS_PENDING;
+  if (s === 'approved') return process.env.VITE_VIEW_IDEAS_APPROVED;
+  return process.env.VITE_VIEW_IDEAS_ALL || process.env.VITE_VIEW_IDEAS_PROPOSED;
+};
+
 const SYSTEM_PROMPT =
   process.env.VITE_SYSTEM_PROMPT ||
   `You are an elite Prompt Strategist for ANATOMIE, a luxury performance travel wear brand.
@@ -339,11 +347,20 @@ app.post('/api/replicate/generate', async (req, res) => {
 // Prompt Ideas - list
 app.get('/api/airtable/ideas', async (req, res) => {
   try {
-    const view = req.query.view || process.env.VITE_VIEW_IDEAS_ALL;
+    const status = req.query.status;
+    const rawView = req.query.view;
+    const view = rawView && rawView !== 'undefined'
+      ? rawView
+      : resolveIdeasView(status);
     const records = await base(process.env.VITE_AIRTABLE_IDEAS_TABLE)
       .select({ view })
       .all();
-    res.json(records.map(mapPromptIdea));
+    let ideas = records.map(mapPromptIdea);
+    if (status) {
+      const target = status.toString().toLowerCase();
+      ideas = ideas.filter((idea) => idea.status.toLowerCase() === target);
+    }
+    res.json(ideas);
   } catch (error) {
     console.error('Error fetching prompt ideas:', error);
     res.status(500).json({ error: 'Failed to fetch prompt ideas' });
@@ -353,11 +370,19 @@ app.get('/api/airtable/ideas', async (req, res) => {
 // Prompt Ideas - grouped by date
 app.get('/api/airtable/ideas/grouped', async (req, res) => {
   try {
-    const view = req.query.view || process.env.VITE_VIEW_IDEAS_ALL;
+    const status = req.query.status;
+    const rawView = req.query.view;
+    const view = rawView && rawView !== 'undefined'
+      ? rawView
+      : resolveIdeasView(status);
     const records = await base(process.env.VITE_AIRTABLE_IDEAS_TABLE)
       .select({ view })
       .all();
-    const ideas = records.map(mapPromptIdea);
+    let ideas = records.map(mapPromptIdea);
+    if (status) {
+      const target = status.toString().toLowerCase();
+      ideas = ideas.filter((idea) => idea.status.toLowerCase() === target);
+    }
     const grouped = ideas.reduce((acc, idea) => {
       const createdDate = new Date(idea.createdAt);
       const year = createdDate.getFullYear();
@@ -444,7 +469,11 @@ app.patch('/api/airtable/ideas/:id', async (req, res) => {
 // Prompt Structures - list
 app.get('/api/airtable/structures', async (req, res) => {
   try {
-    const view = req.query.view || process.env.VITE_VIEW_STRUCTURES_ALL;
+    const rawView = req.query.view;
+    const view =
+      rawView && rawView !== 'undefined'
+        ? rawView
+        : process.env.VITE_VIEW_STRUCTURES_ALL;
     const records = await base(process.env.VITE_AIRTABLE_STRUCTURES_TABLE)
       .select({ view })
       .all();

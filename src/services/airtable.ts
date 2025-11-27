@@ -6,18 +6,24 @@ const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
 // PROMPT IDEAS - READ
 // ============================================
 
-export async function fetchPromptIdeas(viewId: string): Promise<PromptIdea[]> {
-  const res = await fetch(`${API_BASE}/airtable/ideas?view=${encodeURIComponent(viewId)}`);
+export async function fetchPromptIdeas(status?: 'Proposed' | 'Pending' | 'Approved'): Promise<PromptIdea[]> {
+  const url = status
+    ? `${API_BASE}/airtable/ideas?status=${encodeURIComponent(status.toLowerCase())}`
+    : `${API_BASE}/airtable/ideas`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch prompt ideas from backend');
   return res.json();
 }
 
 export async function fetchPromptIdeasByDate(
-  viewId: string,
+  status?: 'Proposed' | 'Pending' | 'Approved',
   startDate?: Date,
   endDate?: Date
 ): Promise<Record<string, PromptIdea[]>> {
-  const res = await fetch(`${API_BASE}/airtable/ideas?view=${encodeURIComponent(viewId)}`);
+  const url = status
+    ? `${API_BASE}/airtable/ideas?status=${encodeURIComponent(status.toLowerCase())}`
+    : `${API_BASE}/airtable/ideas`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch prompt ideas from backend');
   const ideas: PromptIdea[] = await res.json();
 
@@ -91,7 +97,10 @@ export async function updatePromptIdea(
 // ============================================
 
 export async function fetchPromptStructures(viewId: string): Promise<PromptStructure[]> {
-  const res = await fetch(`${API_BASE}/airtable/structures?view=${encodeURIComponent(viewId)}`);
+  const url = viewId
+    ? `${API_BASE}/airtable/structures?view=${encodeURIComponent(viewId)}`
+    : `${API_BASE}/airtable/structures`;
+  const res = await fetch(url);
   if (!res.ok) throw new Error('Failed to fetch prompt structures via backend');
   const data: PromptStructure[] = await res.json();
   return data.map(structure => ({
