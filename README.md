@@ -1,7 +1,7 @@
 
-# Prompt Strategist Dashboard
+# Anatomie Prompt Hub
 
-Production workflow for reviewing and testing AI-generated fashion prompt ideas. Frontend (Vite/React) lives on Netlify, backend (Express) lives on Render, and Airtable/Replicate/OpenAI are proxied through the backend so secrets stay server-side.
+Production workflow for reviewing and testing AI-generated fashion prompt ideas. An AI Prompt Strategist agent generates daily candidate structures; the team reviews, tests, and approves them for automated image generation. Frontend (Vite/React) lives on Netlify, backend (Express) lives on Render, and Airtable/Replicate/OpenAI are proxied through the backend so secrets stay server-side.
 
 ## Quick Start
 ```bash
