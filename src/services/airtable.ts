@@ -17,21 +17,30 @@ export async function fetchPromptIdeasByDate(
   startDate?: Date,
   endDate?: Date
 ): Promise<Record<string, PromptIdea[]>> {
-  const res = await fetch(`${API_BASE}/airtable/ideas/grouped?view=${encodeURIComponent(viewId)}`);
+  const res = await fetch(`${API_BASE}/airtable/ideas?view=${encodeURIComponent(viewId)}`);
   if (!res.ok) throw new Error('Failed to fetch prompt ideas from backend');
-  const grouped: Record<string, PromptIdea[]> = await res.json();
+  const ideas: PromptIdea[] = await res.json();
 
-  // Optional date filtering on the client
-  if (!startDate && !endDate) return grouped;
-
-  const filtered: Record<string, PromptIdea[]> = {};
-  Object.entries(grouped).forEach(([dateKey, ideas]) => {
-    const createdDate = new Date(dateKey);
-    if (startDate && createdDate < startDate) return;
-    if (endDate && createdDate > endDate) return;
-    filtered[dateKey] = ideas;
+  // Filter by date if provided, then group by local date (YYYY-MM-DD) like before
+  const filtered = ideas.filter((idea) => {
+    const createdDate = new Date(idea.createdAt);
+    if (startDate && createdDate < startDate) return false;
+    if (endDate && createdDate > endDate) return false;
+    return true;
   });
-  return filtered;
+
+  const grouped: Record<string, PromptIdea[]> = {};
+  filtered.forEach((idea) => {
+    const createdDate = new Date(idea.createdAt);
+    const year = createdDate.getFullYear();
+    const month = String(createdDate.getMonth() + 1).padStart(2, '0');
+    const day = String(createdDate.getDate()).padStart(2, '0');
+    const dateKey = `${year}-${month}-${day}`;
+    if (!grouped[dateKey]) grouped[dateKey] = [];
+    grouped[dateKey].push(idea);
+  });
+
+  return grouped;
 }
 
 // ============================================

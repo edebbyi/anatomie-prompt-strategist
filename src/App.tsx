@@ -43,7 +43,7 @@ export default function App() {
 
   async function loadIdeas() {
     try {
-      // Fetch each status view to ensure Pending records are included even if All view is filtered
+      // Fetch each status view separately so filters align with the UI tabs
       const [proposed, pending, approved] = await Promise.all([
         fetchPromptIdeasByDate(import.meta.env.VITE_VIEW_IDEAS_PROPOSED),
         fetchPromptIdeasByDate(import.meta.env.VITE_VIEW_IDEAS_PENDING),

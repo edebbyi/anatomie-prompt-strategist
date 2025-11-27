@@ -6,7 +6,7 @@ import { ConfirmationModal } from './ui/ConfirmationModal';
 import { FeedbackModal } from './ui/FeedbackModal';
 import { TestRatingModal } from './ui/TestRatingModal';
 import { createPromptStructure, updatePromptIdea } from '../services/airtable';
-import { SYSTEM_PROMPT } from '../services/openai';
+import { SYSTEM_PROMPT } from '../services/systemPrompt';
 import { toast } from 'sonner@2.0.3';
 
 interface PromptIdea {

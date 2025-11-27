@@ -3,7 +3,7 @@ import { PromptCard } from './PromptCard';
 import { TestLiveModal } from './TestLiveModal';
 import { ChevronLeft, ChevronRight, PartyPopper } from 'lucide-react';
 import { updatePromptIdea, createPromptStructure } from '../services/airtable';
-import { SYSTEM_PROMPT } from '../services/openai';
+import { SYSTEM_PROMPT } from '../services/systemPrompt';
 import { toast } from 'sonner@2.0.3';
 
 type TabView = 'proposed' | 'pending' | 'approved';
