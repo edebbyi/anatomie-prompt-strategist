@@ -49,11 +49,8 @@ export function AddNewIdeaPage({ onBack, onSubmit }: AddNewIdeaPageProps) {
               className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#525866] focus:border-transparent"
             >
               <option value="">Select renderer...</option>
-              <option value="recraft">Recraft</option>
-              <option value="imagefx">ImageFX</option>
-              <option value="midjourney">Midjourney</option>
-              <option value="dalle">DALL-E</option>
-              <option value="stable-diffusion">Stable Diffusion</option>
+              <option value="ImageFX">ImageFX</option>
+              <option value="Recraft">Recraft</option>
             </select>
           </div>
 
