@@ -2,6 +2,9 @@ import { useState } from 'react';
 import { PromptCard } from './PromptCard';
 import { TestLiveModal } from './TestLiveModal';
 import { ChevronLeft, ChevronRight, PartyPopper } from 'lucide-react';
+import { updatePromptIdea, createPromptStructure } from '../services/airtable';
+import { SYSTEM_PROMPT } from '../services/openai';
+import { toast } from 'sonner@2.0.3';
 
 type TabView = 'proposed' | 'pending' | 'approved';
 
@@ -9,47 +12,89 @@ interface TodaysIdeasPageProps {
   currentTab: TabView;
   ideasByDay: Record<string, PromptIdea[]>;
   setIdeasByDay: React.Dispatch<React.SetStateAction<Record<string, PromptIdea[]>>>;
+  onRefresh: () => void;
 }
 
 interface PromptIdea {
   id: string;
+  recordId?: string; // Airtable record ID for API calls
   renderer: string;
   rewardEstimate: number;
   title: string;
   preview: string;
-  status: 'Proposed' | 'Approved' | 'Pending';
+  status: 'Proposed' | 'Approved' | 'Pending' | 'Declined';
   parentStructureId?: string;
+  parentRecordId?: string;
   date: string;
   proposedBy?: string;
+  testImageUrl?: string;
+  feedback?: string;
+  rating?: number;
 }
 
-export function TodaysIdeasPage({ currentTab, ideasByDay, setIdeasByDay }: TodaysIdeasPageProps) {
-  const [showModal, setShowModal] = useState(false);
-  const [selectedIdea, setSelectedIdea] = useState<PromptIdea | null>(null);
-  const [currentDayIndex, setCurrentDayIndex] = useState(0);
-
-  // Get week days
+export function TodaysIdeasPage({ currentTab, ideasByDay, setIdeasByDay, onRefresh }: TodaysIdeasPageProps) {
+  // Get current week (Mon-Sun) using local timezone
   const getWeekDays = () => {
+    const today = new Date();
     const days = [];
-    const startDate = new Date(2025, 10, 24); // Nov 24, 2025 (months are 0-indexed)
-    
+    const dayOfWeek = today.getDay(); // 0 (Sun) - 6 (Sat)
+    const mondayOffset = (dayOfWeek + 6) % 7; // convert to Monday-start
+    const startDate = new Date(today);
+    startDate.setHours(0, 0, 0, 0);
+    startDate.setDate(today.getDate() - mondayOffset);
+
     for (let i = 0; i < 7; i++) {
       const day = new Date(startDate);
       day.setDate(startDate.getDate() + i);
       days.push(day);
     }
-    
+
     return days;
   };
 
   const weekDays = getWeekDays();
+  const today = new Date();
+  const mondayIndex = (today.getDay() + 6) % 7; // 0 for Monday, 6 for Sunday
+
+  const [showModal, setShowModal] = useState(false);
+  const [selectedIdea, setSelectedIdea] = useState<PromptIdea | null>(null);
+  const [currentDayIndex, setCurrentDayIndex] = useState(mondayIndex);
+
   const currentDate = weekDays[currentDayIndex];
-  const currentDateKey = currentDate.toISOString().split('T')[0];
+  // Format date in local timezone as YYYY-MM-DD
+  const year = currentDate.getFullYear();
+  const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+  const day = String(currentDate.getDate()).padStart(2, '0');
+  const currentDateKey = `${year}-${month}-${day}`;
   const ideas = ideasByDay[currentDateKey] || [];
 
   const handleTestLive = (idea: PromptIdea) => {
     setSelectedIdea(idea);
     setShowModal(true);
+  };
+
+  const handleTestImageSave = (recordId: string, imageUrl: string) => {
+    setIdeasByDay(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(dayKey => {
+        next[dayKey] = next[dayKey].map(idea =>
+          idea.recordId === recordId ? { ...idea, testImageUrl: imageUrl } : idea
+        );
+      });
+      return next;
+    });
+  };
+
+  const handleRatingSave = (recordId: string, rating: number) => {
+    setIdeasByDay(prev => {
+      const next = { ...prev };
+      Object.keys(next).forEach(dayKey => {
+        next[dayKey] = next[dayKey].map(idea =>
+          idea.recordId === recordId ? { ...idea, rating } : idea
+        );
+      });
+      return next;
+    });
   };
 
   const handleRemoveIdea = (ideaId: string) => {
@@ -59,28 +104,75 @@ export function TodaysIdeasPage({ currentTab, ideasByDay, setIdeasByDay }: Today
     }));
   };
 
-  const handleApproveIdea = (ideaId: string) => {
-    setIdeasByDay((prev) => ({
-      ...prev,
-      [currentDateKey]: prev[currentDateKey].map((idea) =>
-        idea.id === ideaId ? { ...idea, status: 'Approved' as const } : idea
-      ),
-    }));
+  const handleApproveIdea = async (idea: PromptIdea) => {
+    if (!idea.recordId) {
+      toast.error('Cannot approve: missing record ID');
+      return;
+    }
+
+    try {
+      // Create structure linked to this idea
+      const newStruct = await createPromptStructure({
+        skeleton: idea.preview,
+        renderer: idea.renderer,
+        sourceIdeaRecordId: idea.recordId,
+        aiScore: idea.rewardEstimate,
+        modelUsed: import.meta.env.VITE_OPENAI_MODEL || 'gpt-5.1',
+        systemPrompt: SYSTEM_PROMPT,
+      });
+
+      // Update idea status in Airtable
+      await updatePromptIdea(idea.recordId, {
+        status: 'Approved',
+        approvedAt: new Date().toISOString(),
+        structureId: newStruct.structureId,
+      });
+
+      // Update local state
+      setIdeasByDay((prev) => ({
+        ...prev,
+        [currentDateKey]: prev[currentDateKey].map((i) =>
+          i.id === idea.id ? { ...i, status: 'Approved' as const } : i
+        ),
+      }));
+
+      toast.success('Idea approved and moved to structures.');
+      onRefresh?.();
+    } catch (error) {
+      console.error('Error approving idea:', error);
+      toast.error('Failed to approve idea.');
+    }
   };
 
-  const handleStatusChange = (ideaId: string, newStatus: 'Pending') => {
-    setIdeasByDay((prev) => ({
-      ...prev,
-      [currentDateKey]: prev[currentDateKey].map((idea) =>
-        idea.id === ideaId ? { ...idea, status: newStatus } : idea
-      ),
-    }));
+  const handleStatusChange = async (ideaId: string, newStatus: 'Pending' | 'Approved' | 'Declined') => {
+    const idea = ideas.find(i => i.id === ideaId);
+    if (!idea?.recordId) {
+      toast.error('Cannot update status: missing record ID');
+      return;
+    }
+
+    try {
+      await updatePromptIdea(idea.recordId, { status: newStatus });
+      setIdeasByDay((prev) => ({
+        ...prev,
+        [currentDateKey]: prev[currentDateKey].map((i) =>
+          i.id === ideaId ? { ...i, status: newStatus } : i
+        ),
+      }));
+      if (newStatus === 'Approved') {
+        onRefresh?.();
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      toast.error('Failed to update status in Airtable');
+    }
   };
 
   const filteredIdeas = ideas.filter((idea) => {
-    if (currentTab === 'proposed') return idea.status === 'Proposed';
-    if (currentTab === 'pending') return idea.status === 'Pending';
-    if (currentTab === 'approved') return idea.status === 'Approved';
+    const status = idea.status.toLowerCase();
+    if (currentTab === 'proposed') return status === 'proposed';
+    if (currentTab === 'pending') return status === 'pending';
+    if (currentTab === 'approved') return status === 'approved';
     return true;
   });
 
@@ -109,7 +201,7 @@ export function TodaysIdeasPage({ currentTab, ideasByDay, setIdeasByDay }: Today
   return (
     <>
       <div className="mb-8">
-        <p className="text-gray-600 text-lg mb-6">For the week of 11/24-11/30</p>
+        <p className="text-gray-600 text-lg mb-6">This week</p>
         
         {/* Day Navigation */}
         <div className="flex items-center gap-4 mb-6">
@@ -142,8 +234,9 @@ export function TodaysIdeasPage({ currentTab, ideasByDay, setIdeasByDay }: Today
             idea={idea}
             onTestLive={() => handleTestLive(idea)}
             onRemove={() => handleRemoveIdea(idea.id)}
-            onApprove={() => handleApproveIdea(idea.id)}
+            onApprove={() => handleApproveIdea(idea)}
             onStatusChange={(newStatus) => handleStatusChange(idea.id, newStatus)}
+            onDataChange={onRefresh}
           />
         ))}
       </div>
@@ -161,7 +254,9 @@ export function TodaysIdeasPage({ currentTab, ideasByDay, setIdeasByDay }: Today
           idea={selectedIdea}
           onClose={() => setShowModal(false)}
           onStatusChange={(newStatus) => handleStatusChange(selectedIdea.id, newStatus)}
-          onApprove={() => handleApproveIdea(selectedIdea.id)}
+          onApprove={() => handleApproveIdea(selectedIdea)}
+          onTestImageSave={handleTestImageSave}
+          onRatingSave={handleRatingSave}
         />
       )}
     </>

@@ -1,0 +1,27 @@
+services:
+  - type: web
+    name: anatomie-backend
+    env: node
+    region: virginia
+    plan: free
+    buildCommand: npm install
+    startCommand: npm run server
+    envVars:
+      - key: VITE_AIRTABLE_API_KEY
+        sync: false
+      - key: VITE_AIRTABLE_BASE_ID
+        sync: false
+      - key: VITE_AIRTABLE_IDEAS_TABLE
+        sync: false
+      - key: VITE_AIRTABLE_STRUCTURES_TABLE
+        sync: false
+      - key: VITE_AIRTABLE_SETTINGS_TABLE
+        sync: false
+      - key: VITE_REPLICATE_API_TOKEN
+        sync: false
+      - key: VITE_REPLICATE_MODEL_IMAGEFX
+        sync: false
+      - key: VITE_REPLICATE_MODEL_RECRAFT
+        sync: false
+      - key: VITE_API_BASE
+        value: https://anatomie-backend.onrender.com/api

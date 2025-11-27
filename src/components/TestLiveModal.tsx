@@ -1,67 +1,133 @@
-import { useState } from 'react';
-import { X, Loader2, Download, Star, CheckCircle } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Loader2, Download, Star } from 'lucide-react';
 import { Button } from './ui/Button';
 import { toast } from 'sonner@2.0.3';
+import { generateImage } from '../services/replicate';
+import { updatePromptIdea } from '../services/airtable';
 import exampleImage from 'figma:asset/bc8e32439030c412c06f0354aa9c7aa02f8865df.png';
 
 interface PromptIdea {
   id: string;
+  recordId?: string; // Airtable record ID for API calls
   renderer: string;
   rewardEstimate: number;
   title: string;
   preview: string;
   status: 'Proposed' | 'Approved' | 'Pending';
   proposedBy?: string;
+  createdAt?: string;
+  testImageUrl?: string;
+  rating?: number;
 }
 
 interface TestLiveModalProps {
   idea: PromptIdea;
   onClose: () => void;
-  onStatusChange?: (newStatus: 'Pending') => void;
+  onStatusChange?: (newStatus: 'Pending' | 'Approved' | 'Declined') => void;
   onApprove?: () => void;
+  onTestImageSave?: (recordId: string, imageUrl: string) => void;
+  onRatingSave?: (recordId: string, rating: number) => void;
 }
 
-export function TestLiveModal({ idea, onClose, onStatusChange, onApprove }: TestLiveModalProps) {
-  const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+export function TestLiveModal({
+  idea,
+  onClose,
+  onStatusChange,
+  onApprove,
+  onTestImageSave,
+  onRatingSave
+}: TestLiveModalProps) {
+  const [generatedImage, setGeneratedImage] = useState<string | null>(idea.testImageUrl || null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [seed, setSeed] = useState<number | null>(null);
-  const [rating, setRating] = useState<number>(0);
+  const [rating, setRating] = useState<number>(idea.rating || 0);
   const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [showApproveModal, setShowApproveModal] = useState(false);
   const [showDisapproveModal, setShowDisapproveModal] = useState(false);
+  const isApproved = idea.status === 'Approved';
 
-  // Mock API call to image provider
+  // Keep local image in sync with Airtable's last saved test image
+  useEffect(() => {
+    setGeneratedImage(idea.testImageUrl || null);
+  }, [idea.id, idea.testImageUrl]);
+
+  // Keep local rating in sync with Airtable
+  useEffect(() => {
+    setRating(idea.rating || 0);
+  }, [idea.id, idea.rating]);
+
+  // Generate image using Replicate API
   const handleGenerateImage = async () => {
     setIsGenerating(true);
-    
+
     // Change status to Pending when generation starts
     if (onStatusChange && !generatedImage) {
       onStatusChange('Pending');
     }
-    
-    // Simulate API call to image provider (e.g., Recraft, ImageFX, DALL-E, etc.)
-    await new Promise(resolve => setTimeout(resolve, 3000));
-    
-    // Use the provided example image
-    setGeneratedImage(exampleImage);
-    setSeed(Math.floor(Math.random() * 999999));
-    setIsGenerating(false);
+
+    try {
+      // Call Replicate API based on renderer
+      const prediction = await generateImage(idea.renderer, idea.preview);
+
+      if (prediction.status === 'succeeded' && prediction.output) {
+        // Get the image URL from the output
+        const imageUrl = Array.isArray(prediction.output)
+          ? prediction.output[0]
+          : prediction.output;
+
+        setGeneratedImage(imageUrl);
+        setSeed(Math.floor(Math.random() * 999999));
+        toast.success('Image generated successfully!');
+        await saveTestImage(imageUrl);
+      } else if (prediction.status === 'failed') {
+        throw new Error(prediction.error || 'Image generation failed');
+      }
+    } catch (error) {
+      console.error('Error generating image:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to generate image');
+
+      // Fallback to example image for demo purposes
+      setGeneratedImage(exampleImage);
+      setSeed(Math.floor(Math.random() * 999999));
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     if (!generatedImage) return;
-    
-    // Create a temporary link to download the image
-    const link = document.createElement('a');
-    link.href = generatedImage;
-    link.download = `${idea.title.replace(/\s+/g, '_')}_${seed}.jpg`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+
+    try {
+      // Fetch the image as a blob to avoid CORS issues
+      const response = await fetch(generatedImage);
+      const blob = await response.blob();
+
+      // Create a blob URL
+      const blobUrl = window.URL.createObjectURL(blob);
+
+      // Create a temporary link to download the image
+      const link = document.createElement('a');
+      link.href = blobUrl;
+      link.download = `${idea.title.replace(/\s+/g, '_')}_${seed}.jpg`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      // Clean up the blob URL
+      window.URL.revokeObjectURL(blobUrl);
+
+      toast.success('Image downloaded successfully!');
+    } catch (error) {
+      console.error('Error downloading image:', error);
+      toast.error('Failed to download image. Opening in new tab instead.');
+      // Fallback: open in new tab
+      window.open(generatedImage, '_blank');
+    }
   };
 
   const handleRatingClick = (stars: number) => {
     setRating(stars);
+    saveRating(stars);
   };
 
   const handleApproveClick = () => {
@@ -81,17 +147,59 @@ export function TestLiveModal({ idea, onClose, onStatusChange, onApprove }: Test
     setShowDisapproveModal(true);
   };
 
-  const handleConfirmDisapprove = () => {
+  const handleConfirmDisapprove = async () => {
+    if (idea.recordId) {
+      try {
+        await updatePromptIdea(idea.recordId, { status: 'Declined' });
+        onStatusChange?.('Declined');
+      } catch (error) {
+        console.error('Failed to decline idea', error);
+        toast.error('Failed to update status to Declined');
+      }
+    }
+
     setShowDisapproveModal(false);
     onClose();
     toast.success('Feedback submitted successfully!');
   };
 
+  const saveTestImage = async (imageUrl: string) => {
+    if (!idea.recordId) {
+      toast.error('Image generated but missing Airtable record ID to save it.');
+      return;
+    }
+
+    try {
+      await updatePromptIdea(idea.recordId, { testImageUrl: imageUrl });
+      onTestImageSave?.(idea.recordId, imageUrl);
+      toast.success('Saved test image to Airtable');
+    } catch (error) {
+      console.error('Failed to save test image to Airtable', error);
+      toast.error('Image generated but could not be saved to Airtable');
+    }
+  };
+
+  const saveRating = async (value: number) => {
+    if (!idea.recordId) {
+      toast.error('Cannot save rating: missing Airtable record ID.');
+      return;
+    }
+
+    try {
+      await updatePromptIdea(idea.recordId, { rating: value });
+      onRatingSave?.(idea.recordId, value);
+      toast.success('Rating saved');
+    } catch (error) {
+      console.error('Failed to save rating to Airtable', error);
+      toast.error('Could not save rating');
+    }
+  };
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-8">
       <div className="bg-white rounded-2xl shadow-2xl flex max-w-7xl w-full h-[90vh] overflow-hidden">
-        {/* Left Column - Image */}
-        <div className="flex-1 bg-gray-900 flex items-center justify-center p-8">
+        {/* Left Column - Image (70% width) */}
+        <div className="bg-gray-900 flex items-center justify-center p-8" style={{ width: '70%' }}>
           {!generatedImage && !isGenerating && (
             <div className="text-center">
               <p className="text-gray-400 mb-6">Click Generate to create an image</p>
@@ -122,8 +230,8 @@ export function TestLiveModal({ idea, onClose, onStatusChange, onApprove }: Test
           )}
         </div>
 
-        {/* Right Column - Details */}
-        <div className="w-[500px] flex flex-col bg-white">
+        {/* Right Column - Details (30% width) */}
+        <div className="flex-shrink-0 flex flex-col bg-white" style={{ width: '30%' }}>
           <div className="flex items-center justify-between px-8 py-6 border-b border-gray-200">
             <h2 className="text-gray-900">Image Details</h2>
             <button
@@ -135,6 +243,39 @@ export function TestLiveModal({ idea, onClose, onStatusChange, onApprove }: Test
           </div>
 
           <div className="flex-1 overflow-y-auto px-8 py-6">
+            <div className="mb-6">
+              <label className="block mb-2 text-gray-700">Idea</label>
+              <div className="text-gray-900 leading-relaxed">{idea.id}</div>
+            </div>
+
+            <div className="mb-6">
+              <label className="block mb-2 text-gray-700">Status</label>
+              <span
+                className={`inline-flex items-center justify-start text-xs font-semibold px-3 py-1 rounded-full border ${
+                  idea.status === 'Approved'
+                    ? 'bg-green-100 text-green-800 border-green-200'
+                    : idea.status === 'Pending'
+                    ? 'bg-amber-100 text-amber-800 border-amber-200'
+                    : 'bg-blue-100 text-blue-800 border-blue-200'
+                }`}
+              >
+                {idea.status}
+              </span>
+            </div>
+
+            <div className="mb-6">
+              <label className="block mb-2 text-gray-700">Created At</label>
+              <div className="text-gray-900 leading-relaxed">
+                {(() => {
+                  if (!idea.createdAt) return 'Unknown';
+                  const parsed = new Date(idea.createdAt);
+                  return isNaN(parsed.getTime())
+                    ? idea.createdAt
+                    : parsed.toLocaleString();
+                })()}
+              </div>
+            </div>
+
             {/* Prompt Section */}
             <div className="mb-6">
               <label className="block mb-2 text-gray-700">Prompt</label>
@@ -215,20 +356,24 @@ export function TestLiveModal({ idea, onClose, onStatusChange, onApprove }: Test
                 >
                   Regenerate
                 </Button>
-                <Button
-                  variant="filled"
-                  onClick={handleApproveClick}
-                  className="w-full"
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleDisapproveClick}
-                  className="w-full"
-                >
-                  Disapprove
-                </Button>
+                {!isApproved && (
+                  <>
+                    <Button
+                      variant="filled"
+                      onClick={handleApproveClick}
+                      className="w-full"
+                    >
+                      Approve
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleDisapproveClick}
+                      className="w-full"
+                    >
+                      Disapprove
+                    </Button>
+                  </>
+                )}
               </>
             )}
           </div>

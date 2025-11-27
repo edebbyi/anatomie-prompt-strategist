@@ -5,9 +5,13 @@ import { Badge } from './ui/Badge';
 import { ConfirmationModal } from './ui/ConfirmationModal';
 import { FeedbackModal } from './ui/FeedbackModal';
 import { TestRatingModal } from './ui/TestRatingModal';
+import { createPromptStructure, updatePromptIdea } from '../services/airtable';
+import { SYSTEM_PROMPT } from '../services/openai';
+import { toast } from 'sonner@2.0.3';
 
 interface PromptIdea {
   id: string;
+  recordId?: string; // Airtable record ID for API calls
   renderer: string;
   rewardEstimate: number;
   title: string;
@@ -15,6 +19,9 @@ interface PromptIdea {
   status: 'Proposed' | 'Approved' | 'Pending';
   parentStructureId?: string;
   proposedBy?: string;
+  testImageUrl?: string;
+  feedback?: string;
+  rating?: number;
 }
 
 interface PromptCardProps {
@@ -22,22 +29,54 @@ interface PromptCardProps {
   onTestLive: () => void;
   onRemove?: () => void;
   onApprove?: () => void;
-  onStatusChange?: (newStatus: 'Pending') => void;
+  onStatusChange?: (newStatus: 'Pending' | 'Approved' | 'Declined') => void;
+  onDataChange?: () => void;
 }
 
-export function PromptCard({ idea, onTestLive, onRemove, onApprove, onStatusChange }: PromptCardProps) {
+export function PromptCard({
+  idea,
+  onTestLive,
+  onRemove,
+  onApprove,
+  onStatusChange,
+  onDataChange,
+}: PromptCardProps) {
   const [showConfirmation, setShowConfirmation] = useState(false);
   const [showRemoveConfirmation, setShowRemoveConfirmation] = useState(false);
   const [showFullIdea, setShowFullIdea] = useState(false);
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [showTestRatingModal, setShowTestRatingModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleApprove = () => {
-    // Handle the approval logic here
-    console.log('Approved idea:', idea.id);
-    setShowConfirmation(false);
-    if (onApprove) {
-      onApprove();
+  const handleApprove = async () => {
+    try {
+      setLoading(true);
+      const sourceIdeaRecordId = idea.recordId || idea.id;
+      // Create structure linked to this idea and its parent (if present)
+      const newStructure = await createPromptStructure({
+        skeleton: idea.preview,
+        renderer: idea.renderer,
+        sourceIdeaRecordId,
+        aiScore: idea.rewardEstimate,
+        modelUsed: import.meta.env.VITE_OPENAI_MODEL || 'gpt-5.1',
+        systemPrompt: SYSTEM_PROMPT,
+      });
+
+      await updatePromptIdea(sourceIdeaRecordId, {
+        status: 'Approved',
+        approvedAt: new Date().toISOString(),
+        structureId: newStructure.structureId,
+      });
+
+      setShowConfirmation(false);
+      onStatusChange?.('Approved');
+      onApprove?.();
+      onDataChange?.();
+    } catch (err) {
+      console.error('Failed to approve idea', err);
+      alert('Failed to approve idea. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -56,10 +95,24 @@ export function PromptCard({ idea, onTestLive, onRemove, onApprove, onStatusChan
     onTestLive();
   };
 
-  const handleFeedbackSubmit = (feedback: string) => {
-    console.log('Feedback submitted:', feedback);
+  const handleFeedbackSubmit = async (feedback: string) => {
     setShowFeedbackModal(false);
-    // Handle feedback submission logic
+    if (!idea.recordId) {
+      toast.error('Cannot save feedback: missing record ID');
+      return;
+    }
+    try {
+      const combinedFeedback = idea.feedback
+        ? `${idea.feedback}\n\n${feedback}`
+        : feedback;
+
+      await updatePromptIdea(idea.recordId, { feedback: combinedFeedback });
+      onDataChange?.();
+      toast.success('Feedback saved to Airtable!');
+    } catch (error) {
+      console.error('Error saving feedback:', error);
+      toast.error('Failed to save feedback');
+    }
   };
 
   const handleRatingSubmit = (rating: number, notes?: string) => {
@@ -96,6 +149,7 @@ export function PromptCard({ idea, onTestLive, onRemove, onApprove, onStatusChan
             variant="outline" 
             className="flex-1"
             onClick={handleTestClick}
+            disabled={loading}
           >
             Test
           </Button>
@@ -106,6 +160,7 @@ export function PromptCard({ idea, onTestLive, onRemove, onApprove, onStatusChan
             onClick={() => setShowFeedbackModal(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-gray-100 text-gray-700 hover:bg-gray-200 transition-colors text-sm"
             aria-label="Add feedback"
+            disabled={loading}
           >
             <MessageSquare className="w-4 h-4" />
             <span>Feedback</span>

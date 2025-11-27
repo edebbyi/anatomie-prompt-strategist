@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { SignInPage } from './components/SignInPage';
 import { HeroSection } from './components/HeroSection';
 import { TabNavigation } from './components/TabNavigation';
@@ -7,255 +7,117 @@ import { AddNewIdeaPage } from './components/AddNewIdeaPage';
 import { StructureHistoryPage } from './components/StructureHistoryPage';
 import { DailyBatchSettingsPage } from './components/DailyBatchSettingsPage';
 import { Toaster, toast } from 'sonner@2.0.3';
+import { fetchPromptIdeasByDate } from './services/airtable';
+import type { PromptIdea as AirtableIdea } from './types/airtable';
 
 type PageView = 'today' | 'add-new' | 'history' | 'settings';
 type TabView = 'proposed' | 'pending' | 'approved';
 
 interface PromptIdea {
   id: string;
+  recordId?: string; // Airtable record ID for API calls
   renderer: string;
   rewardEstimate: number;
   title: string;
   preview: string;
-  status: 'Proposed' | 'Approved' | 'Pending';
+  status: 'Proposed' | 'Approved' | 'Pending' | 'Declined';
   parentStructureId?: string;
+  parentRecordId?: string;
+  createdAt?: string;
   date: string;
   proposedBy?: string;
+  testImageUrl?: string;
+  feedback?: string;
+  rating?: number;
 }
-
-// Mock ideas for different days
-const mockIdeasByDay: Record<string, PromptIdea[]> = {
-  '2025-11-24': [
-    {
-      id: '#001',
-      renderer: 'Recraft',
-      rewardEstimate: 4.3,
-      title: 'New Prompt Structure Idea #001',
-      preview: '[Garment Type] stunning luxury [Category]::5 [Modeled by three stunningly beautiful supermodels]::4.5 [Detail 1]::5 [Detail 2]::5...',
-      status: 'Proposed',
-      date: '2025-11-24',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#002',
-      renderer: 'ImageFX',
-      rewardEstimate: 4.7,
-      title: 'New Prompt Structure Idea #002',
-      preview: '[Designer Brand] [Garment] Collection::5 [Seasonal Theme] [Model Count and Description]::4.5 [Photography Style]...',
-      status: 'Approved',
-      date: '2025-11-24',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#003',
-      renderer: 'Midjourney',
-      rewardEstimate: 4.1,
-      title: 'New Prompt Structure Idea #003',
-      preview: '[Minimalist/Maximalist] [Garment Category] Collection [Season/Year]::5 [Technical Specifications]::4.5 [Artistic Direction]...',
-      status: 'Pending',
-      date: '2025-11-24',
-      proposedBy: 'AI System',
-    },
-  ],
-  '2025-11-25': [
-    {
-      id: '#004',
-      renderer: 'DALL-E',
-      rewardEstimate: 4.5,
-      title: 'New Prompt Structure Idea #004',
-      preview: '[Urban/Rural] fashion photography [Garment Focus]::5 [Model demographics and pose]::4.5 [Lighting and atmosphere]...',
-      status: 'Proposed',
-      date: '2025-11-25',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#005',
-      renderer: 'Recraft',
-      rewardEstimate: 4.8,
-      title: 'New Prompt Structure Idea #005',
-      preview: '[Color palette] [Garment] editorial shoot::5 [Fabric details and textures]::5 [Background and setting]::4.5...',
-      status: 'Approved',
-      date: '2025-11-25',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#006',
-      renderer: 'ImageFX',
-      rewardEstimate: 4.2,
-      title: 'New Prompt Structure Idea #006',
-      preview: '[Decade-inspired] [Category] collection::5 [Model styling and makeup]::4.5 [Accessories and props]::4...',
-      status: 'Proposed',
-      date: '2025-11-25',
-      proposedBy: 'AI System',
-    },
-  ],
-  '2025-11-26': [
-    {
-      id: '#007',
-      renderer: 'Midjourney',
-      rewardEstimate: 4.6,
-      title: 'New Prompt Structure Idea #007',
-      preview: '[Avant-garde] [Material/Fabric] fashion collection::5 [Architectural elements]::4.5 [Artistic vision]::4...',
-      status: 'Pending',
-      date: '2025-11-26',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#008',
-      renderer: 'DALL-E',
-      rewardEstimate: 4.4,
-      title: 'New Prompt Structure Idea #008',
-      preview: '[High fashion] runway presentation::5 [Model poses and expression]::4.5 [Venue and atmosphere]::4...',
-      status: 'Approved',
-      date: '2025-11-26',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#009',
-      renderer: 'Recraft',
-      rewardEstimate: 4.9,
-      title: 'New Prompt Structure Idea #009',
-      preview: '[Sustainable fashion] [Eco-friendly materials]::5 [Natural lighting]::4.5 [Outdoor setting]::4.5...',
-      status: 'Proposed',
-      date: '2025-11-26',
-      proposedBy: 'AI System',
-    },
-  ],
-  '2025-11-27': [
-    {
-      id: '#010',
-      renderer: 'ImageFX',
-      rewardEstimate: 4.3,
-      title: 'New Prompt Structure Idea #010',
-      preview: '[Street style] fashion editorial::5 [Urban backdrop]::4.5 [Candid poses]::4...',
-      status: 'Pending',
-      date: '2025-11-27',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#011',
-      renderer: 'Midjourney',
-      rewardEstimate: 4.7,
-      title: 'New Prompt Structure Idea #011',
-      preview: '[Monochrome] [Textile focus] lookbook::5 [Dramatic lighting]::5 [Minimalist composition]::4.5...',
-      status: 'Approved',
-      date: '2025-11-27',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#012',
-      renderer: 'DALL-E',
-      rewardEstimate: 4.5,
-      title: 'New Prompt Structure Idea #012',
-      preview: '[Vintage] [Era-specific] fashion shoot::5 [Period-accurate styling]::4.5 [Retro atmosphere]::4...',
-      status: 'Proposed',
-      date: '2025-11-27',
-      proposedBy: 'AI System',
-    },
-  ],
-  '2025-11-28': [
-    {
-      id: '#013',
-      renderer: 'Recraft',
-      rewardEstimate: 4.8,
-      title: 'New Prompt Structure Idea #013',
-      preview: '[Couture] [Handcrafted details] collection::5 [Luxury fabrics]::5 [Studio lighting]::4.5...',
-      status: 'Approved',
-      date: '2025-11-28',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#014',
-      renderer: 'ImageFX',
-      rewardEstimate: 4.2,
-      title: 'New Prompt Structure Idea #014',
-      preview: '[Athleisure] [Performance wear] campaign::5 [Active poses]::4.5 [Dynamic composition]::4...',
-      status: 'Pending',
-      date: '2025-11-28',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#015',
-      renderer: 'Midjourney',
-      rewardEstimate: 4.6,
-      title: 'New Prompt Structure Idea #015',
-      preview: '[Editorial] [Conceptual fashion] art piece::5 [Surreal elements]::4.5 [Bold styling]::4.5...',
-      status: 'Proposed',
-      date: '2025-11-28',
-      proposedBy: 'AI System',
-    },
-  ],
-  '2025-11-29': [
-    {
-      id: '#016',
-      renderer: 'DALL-E',
-      rewardEstimate: 4.4,
-      title: 'New Prompt Structure Idea #016',
-      preview: '[Formal wear] [Evening attire] collection::5 [Elegant poses]::4.5 [Sophisticated setting]::4...',
-      status: 'Approved',
-      date: '2025-11-29',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#017',
-      renderer: 'Recraft',
-      rewardEstimate: 4.9,
-      title: 'New Prompt Structure Idea #017',
-      preview: '[Resort wear] [Vacation styling]::5 [Tropical backdrop]::5 [Natural light]::4.5...',
-      status: 'Pending',
-      date: '2025-11-29',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#018',
-      renderer: 'ImageFX',
-      rewardEstimate: 4.3,
-      title: 'New Prompt Structure Idea #018',
-      preview: '[Accessories focus] [Detail shots] editorial::5 [Close-up composition]::4.5 [Texture emphasis]::4...',
-      status: 'Proposed',
-      date: '2025-11-29',
-      proposedBy: 'AI System',
-    },
-  ],
-  '2025-11-30': [
-    {
-      id: '#019',
-      renderer: 'Midjourney',
-      rewardEstimate: 4.7,
-      title: 'New Prompt Structure Idea #019',
-      preview: '[Gender-neutral] [Contemporary fashion]::5 [Diverse models]::4.5 [Modern aesthetic]::4.5...',
-      status: 'Approved',
-      date: '2025-11-30',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#020',
-      renderer: 'DALL-E',
-      rewardEstimate: 4.5,
-      title: 'New Prompt Structure Idea #020',
-      preview: '[Knitwear] [Cozy textures] collection::5 [Soft lighting]::4.5 [Intimate setting]::4...',
-      status: 'Pending',
-      date: '2025-11-30',
-      proposedBy: 'AI System',
-    },
-    {
-      id: '#021',
-      renderer: 'Recraft',
-      rewardEstimate: 4.6,
-      title: 'New Prompt Structure Idea #021',
-      preview: '[Bold prints] [Pattern mixing] editorial::5 [Vibrant colors]::5 [Creative styling]::4.5...',
-      status: 'Proposed',
-      date: '2025-11-30',
-      proposedBy: 'AI System',
-    },
-  ],
-};
 
 export default function App() {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [currentPage, setCurrentPage] = useState<PageView>('today');
   const [currentTab, setCurrentTab] = useState<TabView>('proposed');
-  const [ideasByDay, setIdeasByDay] = useState<Record<string, PromptIdea[]>>(mockIdeasByDay);
+  const [ideasByDay, setIdeasByDay] = useState<Record<string, PromptIdea[]>>({});
+
+  useEffect(() => {
+    loadIdeas();
+  }, []);
+
+  async function loadIdeas() {
+    try {
+      // Fetch each status view to ensure Pending records are included even if All view is filtered
+      const [proposed, pending, approved] = await Promise.all([
+        fetchPromptIdeasByDate(import.meta.env.VITE_VIEW_IDEAS_PROPOSED),
+        fetchPromptIdeasByDate(import.meta.env.VITE_VIEW_IDEAS_PENDING),
+        fetchPromptIdeasByDate(import.meta.env.VITE_VIEW_IDEAS_APPROVED),
+      ]);
+
+      const merged: Record<string, PromptIdea[]> = {};
+
+      const mergeIdeas = (ideasByDate: Record<string, AirtableIdea[]>, status: PromptIdea['status']) => {
+        Object.entries(ideasByDate).forEach(([dateKey, ideas]) => {
+          if (!merged[dateKey]) merged[dateKey] = [];
+          ideas.forEach((idea) => {
+            merged[dateKey].push(mapAirtableIdeaToUi(idea, status));
+          });
+        });
+      };
+
+      mergeIdeas(proposed, 'Proposed');
+      mergeIdeas(pending, 'Pending');
+      mergeIdeas(approved, 'Approved');
+
+      setIdeasByDay(merged);
+    } catch (error) {
+      console.error('Failed to load ideas from Airtable', error);
+      toast.error('Could not load today’s ideas from Airtable.');
+    }
+  }
+
+  function mapAirtableIdeaToUi(idea: AirtableIdea, statusOverride?: PromptIdea['status']): PromptIdea {
+    // Format date in local timezone as YYYY-MM-DD
+    let dateKey: string;
+    if (idea.createdAt) {
+      const createdDate = new Date(idea.createdAt);
+      const year = createdDate.getFullYear();
+      const month = String(createdDate.getMonth() + 1).padStart(2, '0');
+      const day = String(createdDate.getDate()).padStart(2, '0');
+      dateKey = `${year}-${month}-${day}`;
+    } else {
+      const today = new Date();
+      const year = today.getFullYear();
+      const month = String(today.getMonth() + 1).padStart(2, '0');
+      const day = String(today.getDate()).padStart(2, '0');
+      dateKey = `${year}-${month}-${day}`;
+    }
+
+    const friendlyId = idea.ideaId ? `#${String(idea.ideaId).padStart(3, '0')}` : idea.id;
+
+    return {
+      id: friendlyId,
+      recordId: idea.id, // Keep Airtable record ID for API calls
+      renderer: idea.renderer,
+      rewardEstimate: idea.reward ?? 0,
+      title: idea.notes || 'Prompt Idea',
+      preview: idea.skeleton,
+      status: statusOverride || normalizeStatus(idea.status),
+      parentStructureId: idea.structureId ? String(idea.structureId) : undefined,
+      parentRecordId: idea.parent?.[0],
+      createdAt: idea.createdAt,
+      date: dateKey,
+      proposedBy: idea.proposedBy,
+      testImageUrl: idea.testImageUrl,
+      feedback: idea.feedback,
+      rating: idea.rating,
+    };
+  }
+
+  function normalizeStatus(status?: string) {
+    if (!status) return 'Proposed';
+    const clean = status.trim().toLowerCase();
+    if (clean === 'approved') return 'Approved';
+    if (clean === 'pending') return 'Pending';
+    if (clean === 'declined') return 'Declined';
+    return 'Proposed';
+  }
 
   // Show sign-in page if not authenticated
   if (!isAuthenticated) {
@@ -268,8 +130,12 @@ export default function App() {
   }
 
   const handleAddIdea = (renderer: string, skeleton: string) => {
-    // Get today's date (Nov 24, 2025)
-    const today = '2025-11-24';
+    // Get today's date in local timezone (YYYY-MM-DD)
+    const todayDate = new Date();
+    const year = todayDate.getFullYear();
+    const month = String(todayDate.getMonth() + 1).padStart(2, '0');
+    const day = String(todayDate.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
     
     // Generate new ID
     const allIdeas = Object.values(ideasByDay).flat();
@@ -280,6 +146,7 @@ export default function App() {
     
     const newIdea: PromptIdea = {
       id: newId,
+      recordId: '', // Will be set when saved to Airtable
       renderer,
       rewardEstimate: Math.round((Math.random() * 1.5 + 3.5) * 10) / 10, // Random 3.5-5.0
       title: `New Prompt Structure Idea ${newId}`,
@@ -302,7 +169,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-[#FAF8F3]">
       <div className="max-w-[1400px] mx-auto px-12 py-8">
-        <HeroSection 
+        <HeroSection
           currentPage={currentPage}
           onNavigate={setCurrentPage}
         />
@@ -320,6 +187,7 @@ export default function App() {
               currentTab={currentTab} 
               ideasByDay={ideasByDay}
               setIdeasByDay={setIdeasByDay}
+              onRefresh={loadIdeas}
             />
           </>
         )}
