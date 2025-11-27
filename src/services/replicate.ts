@@ -4,7 +4,10 @@
  * Calls our backend API proxy to avoid CORS issues
  */
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+const rawBase = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+const API_BASE = rawBase.endsWith('/api')
+  ? rawBase
+  : `${rawBase.replace(/\/$/, '')}/api`;
 
 export interface ReplicateImageFXInput {
   prompt: string;
@@ -131,4 +134,3 @@ export async function cancelPrediction(predictionId: string): Promise<ReplicateP
 
   return response.json();
 }
-

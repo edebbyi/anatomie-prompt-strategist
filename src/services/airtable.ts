@@ -1,6 +1,9 @@
 import { PromptIdea, PromptStructure, DailyBatchSettings } from '@/types/airtable';
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+const rawBase = import.meta.env.VITE_API_BASE || 'http://localhost:3001/api';
+const API_BASE = rawBase.endsWith('/api')
+  ? rawBase
+  : `${rawBase.replace(/\/$/, '')}/api`;
 
 // ============================================
 // PROMPT IDEAS - READ
